@@ -1,8 +1,7 @@
-import math
 import cv2
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-from numpy import pi, cos, sin
+from numpy import pi
 
 AUGMENTATION_LIMIT = 4
 CANNY_LOW = 50
@@ -18,25 +17,37 @@ def polSlope(theta):
     secSquaredTheta = (1 / (cosTheta * cosTheta))
     return np.tan(theta) + np.tan(theta) * secSquaredTheta
 
-def trimLines(lines):
-    angle_thresh = 10  # measured in degrees
-    point_thresh = 40  # hough measured distance between points of two lines
-    strongLines = [lines[0]]
-    for line in lines:
-        for sline in strongLines:
-            rho1, theta1 = line[0], line[1]
-            rho2, theta2 = sline[0], sline[1]
-            if abs(rho1 - rho2) > point_thresh:
-                continue
-            deg1 = theta1 * 180 / pi
-            deg2 = theta2 * 180 / pi
-            if abs(deg1 - deg2) <= angle_thresh \
-                or abs((deg1 - 360) - deg2) <= angle_thresh \
-                    or abs((deg2 - 360) - deg1) <= angle_thresh:
-                pass
-    # redlines = np.delete(lines, toRemove).reshape(-1, 2)
-    # return redlines
 
+def trimLines(lines):
+    strong_lines = np.array([]).reshape(-1, 2)
+    for i, n1 in enumerate(lines):
+        for rho, theta in n1:
+            if i == 0:
+                strong_lines = np.append(strong_lines, n1, axis=0)
+                continue
+            if rho < 0:
+                rho *= -1
+                theta -= pi
+            closeness_rho = np.isclose(rho, strong_lines[:, 0], atol=20)
+            closeness_theta = np.isclose(theta, strong_lines[:, 1], atol=pi/10)
+            closeness = np.all([closeness_rho, closeness_theta], axis=0)
+            if not any(closeness) and len(strong_lines) <= 8:
+                strong_lines = np.append(strong_lines, n1, axis=0)
+    return strong_lines
+
+
+def addLines(frame, lines, color):
+    for line in lines:
+        rho, theta = line[0], line[1]
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a*rho
+        y0 = b*rho
+        x1 = int(x0 + 1000*(-b))
+        y1 = int(y0 + 1000*(a))
+        x2 = int(x0 - 1000*(-b))
+        y2 = int(y0 - 1000*(a))
+        cv2.line(frame, (x1, y1), (x2, y2), color, 2)  # COLOR: BGR Format
 
 def processAndSaveImage(frame, augment, filename='./Training/board.jpeg'): # test
     # Convert to Grayscale
@@ -45,12 +56,29 @@ def processAndSaveImage(frame, augment, filename='./Training/board.jpeg'): # tes
     mod_frame = cv2.GaussianBlur(mod_frame, (5, 5), 0)  # Alternative: cv2.medianBlur(img,5)
     # Apply Canny Edge Detection
     mod_frame = cv2.Canny(mod_frame, CANNY_LOW, CANNY_HIGH, L2gradient=True)
-    # Get thresholds from Image
-    ret, thresh = cv2.threshold(mod_frame, 0, 255, cv2.THRESH_BINARY)  # + cv2.THRESH_OTSU
-    # Use thresholds to find contours
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # Add Contours to image
-    cv2.drawContours(frame, contours, -1, (0, 255, 0), 2)
+    horizontal = cv2.HoughLines(mod_frame, 1, pi / 180, 100, min_theta=0, max_theta=pi/4)
+    vertical = cv2.HoughLines(mod_frame, 1, pi / 180, 100, min_theta=pi/4, max_theta=3*pi/4)
+    if horizontal is not None and vertical is not None:  # Was able to find gridlines
+        horizontal = trimLines(horizontal)
+        addLines(frame, horizontal, (255, 0, 0))
+
+        vertical = trimLines(vertical)
+        addLines(frame, vertical, (0, 0, 255))
+
+        vertical = sorted(list(vertical), key=lambda x: x[0])
+        horizontal = sorted(list(horizontal), key=lambda x: x[0])
+
+        board_left = int(vertical[0][0])
+        board_right = int(vertical[-1][0])
+        board_bottom = int(horizontal[0][0])
+        board_top = int(horizontal[-1][0])
+        print(board_left, board_right, board_bottom, board_top)
+        print(frame.shape)
+        mask = np.zeros(frame.shape, np.uint8)
+        mask[board_bottom:board_top, board_left:board_right] = frame[board_bottom:board_top, board_left:board_right]
+        cv2.imwrite('./ChessImages/testCrop.jpeg', mask)
+
+
 
     # Image Augmentation to increase training set size
     if augment:
