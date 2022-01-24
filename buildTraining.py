@@ -7,17 +7,6 @@ AUGMENTATION_LIMIT = 4
 CANNY_LOW = 50
 CANNY_HIGH = 255
 
-def pol2cart(rho, theta):
-    x = rho * np.cos(theta)
-    y = rho * np.sin(theta)
-    return x, y
-
-def polSlope(theta):
-    cosTheta = np.cos(theta)
-    secSquaredTheta = (1 / (cosTheta * cosTheta))
-    return np.tan(theta) + np.tan(theta) * secSquaredTheta
-
-
 def trimLines(lines):
     strong_lines = np.array([]).reshape(-1, 2)
     for i, n1 in enumerate(lines):
@@ -37,6 +26,7 @@ def trimLines(lines):
 
 
 def addLines(frame, lines, color):
+    coords = []
     for line in lines:
         rho, theta = line[0], line[1]
         a = np.cos(theta)
@@ -47,7 +37,10 @@ def addLines(frame, lines, color):
         y1 = int(y0 + 1000*(a))
         x2 = int(x0 - 1000*(-b))
         y2 = int(y0 - 1000*(a))
+        coords.append((x1, y1, x2, y2))
         cv2.line(frame, (x1, y1), (x2, y2), color, 2)  # COLOR: BGR Format
+    return coords
+
 
 def processAndSaveImage(frame, augment, filename='./Training/board.jpeg'): # test
     # Convert to Grayscale
@@ -56,24 +49,29 @@ def processAndSaveImage(frame, augment, filename='./Training/board.jpeg'): # tes
     mod_frame = cv2.GaussianBlur(mod_frame, (5, 5), 0)  # Alternative: cv2.medianBlur(img,5)
     # Apply Canny Edge Detection
     mod_frame = cv2.Canny(mod_frame, CANNY_LOW, CANNY_HIGH, L2gradient=True)
+    # Calculate Contour of board for Perspective Transform
+    ret, thresh = cv2.threshold(mod_frame, 0, 255, cv2.THRESH_BINARY)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    maxContour = sorted(contours, key=cv2.contourArea, reverse=True)[0]
+    cv2.drawContours(frame, maxContour, -1, (0, 255, 0), 2)
+    # Calculate Hough Lines for Board Division
     horizontal = cv2.HoughLines(mod_frame, 1, pi / 180, 100, min_theta=0, max_theta=pi/4)
     vertical = cv2.HoughLines(mod_frame, 1, pi / 180, 100, min_theta=pi/4, max_theta=3*pi/4)
     if horizontal is not None and vertical is not None:  # Was able to find gridlines
         horizontal = trimLines(horizontal)
-        addLines(frame, horizontal, (255, 0, 0))
+        horizontal = sorted(list(horizontal), key=lambda x: x[0])
+        coordsH = addLines(frame, horizontal, (255, 0, 0))
 
         vertical = trimLines(vertical)
-        addLines(frame, vertical, (0, 0, 255))
-
         vertical = sorted(list(vertical), key=lambda x: x[0])
-        horizontal = sorted(list(horizontal), key=lambda x: x[0])
+        coordsV = addLines(frame, vertical, (0, 0, 255))
 
         board_left = int(vertical[0][0])
         board_right = int(vertical[-1][0])
         board_bottom = int(horizontal[0][0])
         board_top = int(horizontal[-1][0])
-        print(board_left, board_right, board_bottom, board_top)
-        print(frame.shape)
+        # print(board_left, board_right, board_bottom, board_top)
+        # print(frame.shape)
         mask = np.zeros(frame.shape, np.uint8)
         mask[board_bottom:board_top, board_left:board_right] = frame[board_bottom:board_top, board_left:board_right]
         cv2.imwrite('./ChessImages/testCrop.jpeg', mask)
