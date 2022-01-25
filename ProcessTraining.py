@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+from keras.preprocessing.image import ImageDataGenerator, img_to_array
 from numpy import pi
 from os import listdir
 from os.path import isfile, join
@@ -94,7 +94,7 @@ def getContours(contour_frame):
     return contours
 
 
-def processAndSaveImage(frame, filename='./Training/board.jpeg'):
+def getPiecesFromImage(frame):
     # Apply Grayscale, GBlur, and Canny
     contour_frame = processFrame(frame, 1)
     contours = getContours(contour_frame)
@@ -110,15 +110,16 @@ def processAndSaveImage(frame, filename='./Training/board.jpeg'):
     # Warps Perspective and Resizes to (640, 640)
     perspective_frame = getBoardPerspective(frame, approxCorners, pts_dst)
     perspective_frame = cv2.resize(perspective_frame, (640, 640), interpolation=cv2.INTER_AREA)
-    cv2.imwrite("./Training/WarpedImage.jpg", perspective_frame)
+    # cv2.imwrite("./Training/WarpedImage.jpg", perspective_frame)
 
     contour_frame = processFrame(perspective_frame, 0)  # Uses Binary instead of Canny Edge Detection
-    cv2.imwrite("./Training/Warped&Processed.jpg", contour_frame)
+    # cv2.imwrite("./Training/Warped&Processed.jpg", contour_frame)
     contours = getContours(contour_frame)
     # rect = cv2.boundingRect(maxContour)
     # maxX, maxY, maxW, maxH = rect
-    imageCounter = 0
     croppedImages = []
+    centroids = []
+
     for cnt in contours:
         rect = cv2.boundingRect(cnt)
         x, y, w, h = rect
@@ -129,35 +130,37 @@ def processAndSaveImage(frame, filename='./Training/board.jpeg'):
             mask = cv2.resize(mask, (80, 80), interpolation=cv2.INTER_AREA)  # Create Uniform image size for TF input
             croppedImages.append(mask)
             # Draw bounding box and centroid to image
-            cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
+            # cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
             # Draw center coordinate in bounding box
             centerCoord = (int(x+(w/2)), int(y+(h/2)))
-            cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
+            centroids.append(centerCoord)
+            # cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
+        # print('Writing image ' + filename)
+        # cv2.imwrite(filename, perspective_frame)
+
+    hough_frame = processFrame(perspective_frame, 1)
+    horizontal = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=0, max_theta=pi/4)
+    vertical = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=pi/4, max_theta=3*pi/4)
+    if horizontal is not None and vertical is not None:
+        horizontal = trimLines(horizontal)
+        addLines(perspective_frame, horizontal, (255, 0, 0))
+
+        vertical = trimLines(vertical)
+        addLines(perspective_frame, vertical, (0, 0, 255))
+
+        vertical = sorted(list(vertical), key=lambda x: x[0])
+        horizontal = sorted(list(horizontal), key=lambda x: x[0])
+    cv2.imwrite('./Training/testhough.jpeg', perspective_frame)
+
+    return croppedImages, centroids, [horizontal, vertical]
+
+
+def processAndSaveImage(frame, filename='./Training/board.jpeg'):
+    croppedImages, _, _ = getPiecesFromImage(frame)
 
     # for i, img in enumerate(croppedImages):
     #     cv2.imwrite(f'./Training/piece{i}.jpeg', img)
 
-    print('Writing image ' + filename)
-    cv2.imwrite(filename, perspective_frame)
-
 if __name__ == "__main__":
-    # cap = cv2.VideoCapture(0)
-    # i = 1
-    #
-    # while cap.isOpened():
-    #     ret, frame = cap.read()
-    #     cv2.imshow('Chess Board Input', frame)
-    #
-    #     c = cv2.waitKey(1)
-    #     if c == 27: # Escape Key terminates program
-    #         break
-    #     elif c == 32: # Space bar captures photo
-    #         # 0 = Process single frame
-    #         # 1 = Batch augmented frames
-    #         processAndSaveImage(frame, 0, './Training/board' + str(i) + '.jpeg')
-    #         i += 1
-    #
-    # cap.release()
-    # cv2.destroyAllWindows()
     frame = cv2.imread('./ChessImages/board2.jpeg')
     processAndSaveImage(frame, './Training/board1.jpeg')

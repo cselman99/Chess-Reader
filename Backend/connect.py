@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 import os
 
-import chess
-from ImageReader import ImageReader
+from chess import *
 from ModelGenerator import ModelGenerator
+from ChessDriver import getPiecesFromImage, makePredictions
+import cv2
 
 UPLOAD_FOLDER = '../IMGs'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -56,20 +57,17 @@ def processImage():
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], FILENAME)
 
-    # Image Processing Steps
-    reader = ImageReader()
-    reader.setFilename(filepath)
-    reader.processImage()
-    squares = reader.getSplitImages()
-
     # Load CNN Model
     model = ModelGenerator()
     model.loadModel()
 
-    # Classify each board piece
-    for i in range(CHESS_BOARD):
-        prediction = model.predict(reader.getImage())
-        board.setSpace(i // BOARD_LEN, i % BOARD_LEN, prediction)
+    croppedImages, centroids, houghlines = getPiecesFromImage(cv2.imread(filepath))
+    pieces = makePredictions(croppedImages, centroids, houghlines)
+
+    # Write each piece to board
+    for piece in pieces:
+        pieceName, prediction = piece[0], piece[1]
+        board.setSpace(pieceName, prediction)
 
 @app.route('/getMoves', methods=['GET'])
 def getMoves():

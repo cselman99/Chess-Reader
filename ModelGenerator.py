@@ -16,6 +16,7 @@ class ModelGenerator:
 
     # Build a model from initialized training data
     def buildModel(self, trainX, trainY):
+        print(trainX.shape, trainY.shape)
         self.model = Sequential([
             Dense(units=16, input_shape=(1,), activation='relu'),
             Dense(units=32, activation='relu'),
@@ -30,7 +31,7 @@ class ModelGenerator:
                            run_eagerly=True)
 
         # Can alter input params to improve model (Ex: Increase epochs)
-        fitStats = self.model.fit(trainX, trainY, batch_size=10, epochs=5, shuffle=True, verbose=1)
+        fitStats = self.model.fit(trainX, trainY, batch_size=100, epochs=10, shuffle=True, verbose=1)
         print(fitStats)
 
     def evaluateBoard(self, testX, testY):
