@@ -94,18 +94,18 @@ def getContours(contour_frame):
     return contours
 
 
-def processAndSaveImage(frame, augment, filename='./Training/board.jpeg'):
+def processAndSaveImage(frame, filename='./Training/board.jpeg'):
     # Apply Grayscale, GBlur, and Canny
     contour_frame = processFrame(frame, 1)
     contours = getContours(contour_frame)
     maxContour = sorted(contours, key=cv2.contourArea, reverse=True)[0]
-    maxCArea = cv2.contourArea(maxContour)
 
     # Get Board Corners
     perim = cv2.arcLength(maxContour, True)
     epsilon = 0.02*perim
     approxCorners = np.asarray(cv2.approxPolyDP(maxContour, epsilon, True)).reshape(-1, 2)
     pts_dst = np.array([[3024, 0.0], [3024, 4032], [0, 4032], [0.0, 0.0]])
+    # pts_dst = np.array([[0.0, 0.0], [3024, 0.0], [3024, 4032], [0, 4032]]) FOR NO ROTATION
 
     # Warps Perspective and Resizes to (640, 640)
     perspective_frame = getBoardPerspective(frame, approxCorners, pts_dst)
@@ -122,22 +122,20 @@ def processAndSaveImage(frame, augment, filename='./Training/board.jpeg'):
     for cnt in contours:
         rect = cv2.boundingRect(cnt)
         x, y, w, h = rect
-        centerCoord = (int(x+(w/2)), int(y+(h/2)))
-        cArea = cv2.contourArea(cnt)
 
-        if np.isclose(cArea, maxCArea, atol=100):  # or x < maxX or x > (maxX + maxW) or y < maxY or y > (maxY + maxH)
-            print("A")
-            continue
-        elif w*h >= 6400 and w*h <= 12800:  # Greater than the size of an empty square and less than 2 squares
-            print("B")
+        if 6000 <= w*h <= 12800:  # Greater than the size of an empty square and less than 2 squares
             # Create cropped image
             mask = perspective_frame[y:y+h, x:x+w]
+            mask = cv2.resize(mask, (80, 80), interpolation=cv2.INTER_AREA)  # Create Uniform image size for TF input
             croppedImages.append(mask)
             # Draw bounding box and centroid to image
             cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
+            # Draw center coordinate in bounding box
+            centerCoord = (int(x+(w/2)), int(y+(h/2)))
             cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
-        else:
-            print(w*h)
+
+    # for i, img in enumerate(croppedImages):
+    #     cv2.imwrite(f'./Training/piece{i}.jpeg', img)
 
     print('Writing image ' + filename)
     cv2.imwrite(filename, perspective_frame)
@@ -162,4 +160,4 @@ if __name__ == "__main__":
     # cap.release()
     # cv2.destroyAllWindows()
     frame = cv2.imread('./ChessImages/board2.jpeg')
-    processAndSaveImage(frame, 0, './Training/board1.jpeg')
+    processAndSaveImage(frame, './Training/board1.jpeg')
