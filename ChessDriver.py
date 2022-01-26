@@ -8,7 +8,7 @@ import Constants as constants
 from os import listdir
 from os.path import isfile, join
 import numpy as np
-from ModelGenerator import ModelGenerator
+import ModelGenerator as mg
 from ProcessTraining import getPiecesFromImage
 
 
@@ -21,27 +21,23 @@ def extractPieceFromFilename(filename):
     return None
 
 
-def loadTrainingSet():
-    # Format training set
-    trainX, trainY = [], []
-    trainingFiles = [join(constants.TRAINING_PATH, f)
-                     for f in listdir(constants.TRAINING_PATH)
-                     if isfile(join(constants.TRAINING_PATH, f))]
+def isAbove(point, lines):
+    pass
 
-    for file in trainingFiles:
-        name = extractPieceFromFilename(file)
-        if name is not None:
-            img = np.asarray(cv2.imread(file)).reshape(1,)  # 80 x 80 (6400 pixels)
-            trainX.append(img)
-            trainY.append(name)
 
-    trainX = np.asarray(trainX)
-    trainY = np.asarray(trainY)
-    return trainX, trainY
+def isRight(point, lines):
+    pass
 
 
 def predictSquare(curCentroid, houghlines):
-    return ""
+    horizontal, verticle = houghlines[0], houghlines[1]
+    vSquare = 0
+    hSquare = 0
+    while isAbove(curCentroid, horizontal):
+        hSquare += 1
+    while isRight(curCentroid, verticle):
+        vSquare += 1
+    return hSquare, vSquare
 
 
 def makePredictions(model, images, centroids, houghlines):
@@ -49,33 +45,34 @@ def makePredictions(model, images, centroids, houghlines):
     pieces = []
     for i in range(N):
         # Prepare Image for Prediction (6400 pixels)
-        curImage = np.asarray(images[i]).reshape(1,)
+        curImage = np.asarray(images[i])
         # Get Related Centroid for Piece
         curCentroid = centroids[i]
         # Predict Piece Position
-        squareName = predictSquare(curCentroid, houghlines)
+        h, v = predictSquare(curCentroid, houghlines)
         # Predict Type of Piece
-        prediction = model.predict(curImage)
-        pieceIndex = np.argmax(prediction, axis=1)
+        curImage = curImage / 255.
+        curImage = np.reshape(curImage, (1, 80, 80, 3))
+        prediction = mg.predict(model, curImage)
+        pieceIndex = np.argmax(prediction, axis=1)[0]
         pieceName = constants.PIECES[pieceIndex]
 
-        pieces.append((pieceName, squareName))
+        pieces.append((pieceName, (h, v)))
     return pieces
 
 class IllegalArgumentError(ValueError):
     pass
 
 if __name__ == '__main__':
-    model = ModelGenerator()
     if len(sys.argv) == 3 and sys.argv[2] == '1':
         print("Constructing new model...")
-        trainX, trainY = loadTrainingSet()
-        model.buildModel(trainX, trainY)
+        train_ds, val_ds = mg.loadDataset(constants.TRAINING_PATH)
+        model = mg.buildModel(train_ds, val_ds)
         print("Saving model...")
-        model.saveModel()  # Save model for future iterations
+        mg.saveModel(model)  # Save model for future iterations
     elif len(sys.argv) == 3:
         print("Loading stored model...")
-        model.loadModel()  # Populates model with saved model at specified dir location
+        model = mg.loadModel(constants.MODEL_PATH)  # Populates model with saved model at specified dir location
     else:
         raise IllegalArgumentError(f"Wrong number of command line arguments. Expected 3 but found {len(sys.argv)}")
 

@@ -1,11 +1,7 @@
 import cv2
 import numpy as np
-from keras.preprocessing.image import ImageDataGenerator, img_to_array
 from numpy import pi
-from os import listdir
-from os.path import isfile, join
 
-AUGMENTATION_LIMIT = 4
 CANNY_LOW = 0  # 100
 CANNY_HIGH = 155 # 255
 
@@ -25,30 +21,6 @@ def trimLines(lines):
             if not any(closeness) and len(strong_lines) <= 8:
                 strong_lines = np.append(strong_lines, n1, axis=0)
     return strong_lines
-
-
-def augmentImage(source, destination):
-    # Image Augmentation to increase training set size
-    onlyfiles = [f for f in listdir(source) if isfile(join(source, f))]
-    for file in onlyfiles:
-        print(f'Writing image {file} plus {AUGMENTATION_LIMIT} augmentations')
-        datagen = ImageDataGenerator(
-            rotation_range=40,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            shear_range=0.2,
-            zoom_range=0.2,
-            horizontal_flip=True,
-            fill_mode='nearest')
-        frame = cv2.imread(file)
-        frame = img_to_array(frame)
-        frame = frame.reshape((1,) + frame.shape)
-        j = 0
-        for _ in datagen.flow(frame, batch_size=1,
-                              save_to_dir=destination, save_prefix=file, save_format='jpeg'):
-            j += 1
-            if j > AUGMENTATION_LIMIT:
-                break
 
 
 def addLines(frame, lines, color):
@@ -148,19 +120,19 @@ def getPiecesFromImage(frame):
         vertical = trimLines(vertical)
         addLines(perspective_frame, vertical, (0, 0, 255))
 
-        vertical = sorted(list(vertical), key=lambda x: x[0])
-        horizontal = sorted(list(horizontal), key=lambda x: x[0])
-    cv2.imwrite('./Training/testhough.jpeg', perspective_frame)
+        vertical = sorted(list(vertical), key=lambda vx: vx[0])
+        horizontal = sorted(list(horizontal), key=lambda vx: vx[0])
+    # cv2.imwrite('./Training/testhough.jpeg', perspective_frame)
 
     return croppedImages, centroids, [horizontal, vertical]
 
 
-def processAndSaveImage(frame, filename='./Training/board.jpeg'):
+def processAndSaveImage(frame):
     croppedImages, _, _ = getPiecesFromImage(frame)
 
-    # for i, img in enumerate(croppedImages):
-    #     cv2.imwrite(f'./Training/piece{i}.jpeg', img)
+    for i, img in enumerate(croppedImages):
+        cv2.imwrite(f'./Training/piece{i}.jpeg', img)
 
 if __name__ == "__main__":
     frame = cv2.imread('./ChessImages/board2.jpeg')
-    processAndSaveImage(frame, './Training/board1.jpeg')
+    processAndSaveImage(frame, 'ChessImages/bounding_img.jpeg')
