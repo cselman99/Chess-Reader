@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 import os
 
-from chess import *
-from ModelGenerator import ModelGenerator
+import chess
+import ModelGenerator as mg
+import Constants as constants
 from ChessDriver import getPiecesFromImage, makePredictions
 import cv2
 
@@ -45,10 +46,12 @@ def upload_file():
             return IMG_UPLOAD_SUCESS
     return IMG_UPLOAD_FAILURE
 
+
 @app.route('/classify', methods=['GET'])
 def classifyImage():
     if request.method == 'GET':
         return processImage()
+
 
 def processImage():
     # Confirm image upload has taken place
@@ -58,24 +61,26 @@ def processImage():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], FILENAME)
 
     # Load CNN Model
-    model = ModelGenerator()
-    model.loadModel()
+    model = mg.loadModel(constants.MODEL_PATH)
 
     croppedImages, centroids, houghlines = getPiecesFromImage(cv2.imread(filepath))
-    pieces = makePredictions(croppedImages, centroids, houghlines)
+    pieces = makePredictions(model, croppedImages, centroids, houghlines)
 
     # Write each piece to board
     for piece in pieces:
         pieceName, prediction = piece[0], piece[1]
         board.setSpace(pieceName, prediction)
 
+
 @app.route('/getMoves', methods=['GET'])
 def getMoves():
     if request.method == 'GET':
         return findMoves()
 
+
 def findMoves():
     return board.getBestMoves()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

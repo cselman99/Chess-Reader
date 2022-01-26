@@ -113,18 +113,19 @@ def getPiecesFromImage(frame):
     hough_frame = processFrame(perspective_frame, 1)
     horizontal = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=0, max_theta=pi/4)
     vertical = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=pi/4, max_theta=3*pi/4)
+    coordsHorizontal = []
+    coordsVerticle = []
     if horizontal is not None and vertical is not None:
         horizontal = trimLines(horizontal)
-        addLines(perspective_frame, horizontal, (255, 0, 0))
+        horizontal = sorted(list(horizontal), key=lambda vx: vx[0])
+        coordsHorizontal = addLines(perspective_frame, horizontal, (255, 0, 0))
 
         vertical = trimLines(vertical)
-        addLines(perspective_frame, vertical, (0, 0, 255))
-
         vertical = sorted(list(vertical), key=lambda vx: vx[0])
-        horizontal = sorted(list(horizontal), key=lambda vx: vx[0])
-    # cv2.imwrite('./Training/testhough.jpeg', perspective_frame)
+        coordsVerticle = addLines(perspective_frame, vertical, (0, 0, 255))
 
-    return croppedImages, centroids, [horizontal, vertical]
+    # cv2.imwrite('./Training/testhough.jpeg', perspective_frame)
+    return croppedImages, centroids, [coordsHorizontal, coordsVerticle]
 
 
 def processAndSaveImage(frame):

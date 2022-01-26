@@ -21,21 +21,19 @@ def extractPieceFromFilename(filename):
     return None
 
 
-def isAbove(point, lines):
-    pass
+def checkLocation(point, line):  # (x1, y1, x2, y2)
+    x1, y1, x2, y2 = line[0], line[1], line[2], line[3]
+    x3, y3 = point[0], point[1]
+    return ((x2 - x1)*(y3 - y1) - (y2 - y1)*(x3 - x1)) > 0
 
 
-def isRight(point, lines):
-    pass
-
-
-def predictSquare(curCentroid, houghlines):
-    horizontal, verticle = houghlines[0], houghlines[1]
+def predictSquare(curCentroid, coords):
+    horizontal, verticle = coords[0], coords[1]
     vSquare = 0
     hSquare = 0
-    while isAbove(curCentroid, horizontal):
+    while checkLocation(curCentroid, horizontal[hSquare]):
         hSquare += 1
-    while isRight(curCentroid, verticle):
+    while checkLocation(curCentroid, verticle[vSquare]):
         vSquare += 1
     return hSquare, vSquare
 
@@ -78,8 +76,8 @@ if __name__ == '__main__':
 
     # Read in and load image with gray-scale format
     filename = sys.argv[1]
-    croppedImages, centroids, houghlines = getPiecesFromImage(cv2.imread(filename))
-    pieces = makePredictions(model, croppedImages, centroids, houghlines)
+    croppedImages, centroids, coords = getPiecesFromImage(cv2.imread(filename))
+    pieces = makePredictions(model, croppedImages, centroids, coords)
     print(pieces)
 
 
