@@ -32,6 +32,7 @@ def checkExtension(filename):
 @app.route('/submitImage', methods=['POST'])
 def upload_file():
     if request.method == 'POST':
+        print("/submitImage reached!")
         # check if the post request has the file part
         if 'file' not in request.files:
             return IMG_UPLOAD_FAILURE
@@ -48,6 +49,7 @@ def upload_file():
 @app.route('/classify', methods=['GET'])
 def classifyImage():
     if request.method == 'GET':
+        print("/classify reached!")
         # Confirm image upload has taken place
         if len(os.listdir(app.config['UPLOAD_FOLDER'])) == 0:
             return CLASSIFY_IMAGE_FAILURE

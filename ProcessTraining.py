@@ -1,9 +1,12 @@
 import cv2
 import numpy as np
 from numpy import pi
+import argparse
+import glob
 
-CANNY_LOW = 0  # 100
-CANNY_HIGH = 155 # 255
+CANNY_LOW = 0   # 100
+CANNY_HIGH = 155  # 255
+CANNY_THRESHOLD = 90
 
 def trimLines(lines):
     strong_lines = np.array([]).reshape(-1, 2)
@@ -53,7 +56,13 @@ def processFrame(frame, tresholding):
     mod_frame = cv2.GaussianBlur(mod_frame, (5, 5), 0)  # Alternative: cv2.medianBlur(img,5)
     if tresholding:
         # Apply Canny Edge Detection
-        mod_frame = cv2.Canny(mod_frame, CANNY_LOW, CANNY_HIGH, L2gradient=True)
+        # compute the median of the single channel pixel intensities
+        v = np.median(mod_frame)
+        # apply automatic Canny edge detection using the computed median
+        sigma = 0.33
+        lower = int(max(0, (1.0 - sigma) * v))
+        upper = int(min(255, (1.0 + sigma) * v))
+        mod_frame = cv2.Canny(mod_frame, 30, 90, L2gradient=True)
     else:
         mod_frame = cv2.threshold(mod_frame, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     return mod_frame
@@ -84,8 +93,8 @@ def getPiecesFromImage(frame):
     perspective_frame = cv2.resize(perspective_frame, (640, 640), interpolation=cv2.INTER_AREA)
     # cv2.imwrite("./Training/WarpedImage.jpg", perspective_frame)
 
-    contour_frame = processFrame(perspective_frame, 0)  # Uses Binary instead of Canny Edge Detection
-    # cv2.imwrite("./Training/Warped&Processed.jpg", contour_frame)
+    contour_frame = processFrame(perspective_frame, 1)  # Uses Binary instead of Canny Edge Detection
+    cv2.imwrite("./ChessImages/Warped&Processed.jpg", contour_frame)
     contours = getContours(contour_frame)
     # rect = cv2.boundingRect(maxContour)
     # maxX, maxY, maxW, maxH = rect
@@ -93,6 +102,9 @@ def getPiecesFromImage(frame):
     centroids = []
 
     for cnt in contours:
+        if cnt.shape[0] < 45:
+            continue
+        print(cnt.shape)
         rect = cv2.boundingRect(cnt)
         x, y, w, h = rect
 
@@ -102,13 +114,13 @@ def getPiecesFromImage(frame):
             mask = cv2.resize(mask, (80, 80), interpolation=cv2.INTER_AREA)  # Create Uniform image size for TF input
             croppedImages.append(mask)
             # Draw bounding box and centroid to image
-            # cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
+            cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
             # Draw center coordinate in bounding box
-            centerCoord = (int(x+(w/2)), int(y+(h/2)))
+            centerCoord = (int(x+(w/2)), int(y+(h/1.5)))
             centroids.append(centerCoord)
-            # cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
+            cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
         # print('Writing image ' + filename)
-        # cv2.imwrite(filename, perspective_frame)
+    cv2.imwrite('./ChessImages/board-coords.jpeg', perspective_frame)
 
     hough_frame = processFrame(perspective_frame, 1)
     horizontal = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=0, max_theta=pi/4)
@@ -131,9 +143,9 @@ def getPiecesFromImage(frame):
 def processAndSaveImage(frame):
     croppedImages, _, _ = getPiecesFromImage(frame)
 
-    for i, img in enumerate(croppedImages):
-        cv2.imwrite(f'./Training/piece{i}.jpeg', img)
+    # for i, img in enumerate(croppedImages):
+    #     cv2.imwrite(f'./Training/piece{i}.jpeg', img)
 
 if __name__ == "__main__":
     frame = cv2.imread('./ChessImages/board2.jpeg')
-    processAndSaveImage(frame, 'ChessImages/bounding_img.jpeg')
+    processAndSaveImage(frame)
