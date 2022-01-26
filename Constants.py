@@ -14,3 +14,4 @@ PIECES = ['Bishop',
           'Rook']
 MODEL_PATH = './Keras'
 AUGMENTATION_LIMIT = 4
+APP_UPLOAD_FOLDER = '../IMGs'

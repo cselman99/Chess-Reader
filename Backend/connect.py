@@ -1,17 +1,14 @@
 from flask import Flask, request, jsonify
 import os
-
-import chess
 import ModelGenerator as mg
 import Constants as constants
 from ChessDriver import getPiecesFromImage, makePredictions
 import cv2
 
-UPLOAD_FOLDER = '../IMGs'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['UPLOAD_FOLDER'] = constants.APP_UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 IMG_UPLOAD_SUCESS = CLASSIFY_IMAGE_SUCCESS = 1
 IMG_UPLOAD_FAILURE = CLASSIFY_IMAGE_FAILURE = 0
@@ -19,17 +16,18 @@ FILENAME = 'board.jpeg'
 CHESS_BOARD = 64
 BOARD_LEN = 8
 
-board = ChessBoard()
 
 @app.route('/', methods=['GET'])
 def test():
     return jsonify({"hello": "world"})
+
 
 def checkExtension(filename):
     for ext in ALLOWED_EXTENSIONS:
         if ext in filename:
             return True
     return False
+
 
 @app.route('/submitImage', methods=['POST'])
 def upload_file():
@@ -50,36 +48,17 @@ def upload_file():
 @app.route('/classify', methods=['GET'])
 def classifyImage():
     if request.method == 'GET':
-        return processImage()
-
-
-def processImage():
-    # Confirm image upload has taken place
-    if len(os.listdir(app.config['UPLOAD_FOLDER'])) == 0:
-        return CLASSIFY_IMAGE_FAILURE
-
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], FILENAME)
-
-    # Load CNN Model
-    model = mg.loadModel(constants.MODEL_PATH)
-
-    croppedImages, centroids, houghlines = getPiecesFromImage(cv2.imread(filepath))
-    pieces = makePredictions(model, croppedImages, centroids, houghlines)
-
-    # Write each piece to board
-    for piece in pieces:
-        pieceName, prediction = piece[0], piece[1]
-        board.setSpace(pieceName, prediction)
-
-
-@app.route('/getMoves', methods=['GET'])
-def getMoves():
-    if request.method == 'GET':
-        return findMoves()
-
-
-def findMoves():
-    return board.getBestMoves()
+        # Confirm image upload has taken place
+        if len(os.listdir(app.config['UPLOAD_FOLDER'])) == 0:
+            return CLASSIFY_IMAGE_FAILURE
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], FILENAME)
+        # Load CNN Model
+        model = mg.loadModel(constants.MODEL_PATH)
+        # Parse Image File for Pieces
+        croppedImages, centroids, coords = getPiecesFromImage(cv2.imread(filepath))
+        # Predict pieces and their locations
+        pieces = makePredictions(model, croppedImages, centroids, coords)
+        return pieces
 
 
 if __name__ == '__main__':
