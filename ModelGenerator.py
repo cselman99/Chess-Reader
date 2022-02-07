@@ -73,10 +73,10 @@ def loadDataset(path):
         image_size=(img_height, img_width),
         batch_size=batch_size)
 
-    normalization_layer = tf.keras.layers.Rescaling(1./255)
-    normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
+    # normalization_layer = tf.keras.layers.Rescaling(1./255)
+    # normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
 
     AUTOTUNE = tf.data.AUTOTUNE
-    normalized_ds = normalized_ds.cache().prefetch(buffer_size=AUTOTUNE)
+    train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
     val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
-    return normalized_ds, val_ds
+    return train_ds, val_ds

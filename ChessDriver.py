@@ -3,10 +3,7 @@
 import sys
 
 import cv2
-from sklearn.preprocessing import MinMaxScaler
 import Constants as constants
-from os import listdir
-from os.path import isfile, join
 import numpy as np
 import ModelGenerator as mg
 from ProcessTraining import getPiecesFromImage
@@ -21,10 +18,10 @@ def extractPieceFromFilename(filename):
     return None
 
 
-def checkLocation(point, line):  # (x1, y1, x2, y2)
+def checkLocation(point, line):
     x1, y1, x2, y2 = line[0], line[1], line[2], line[3]
     x3, y3 = point[0], point[1]
-    return ((x2 - x1)*(y3 - y1) - (y2 - y1)*(x3 - x1)) > 0
+    return ((x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)) > 0
 
 
 def predictSquare(curCentroid, coords):

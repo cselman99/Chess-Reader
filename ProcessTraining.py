@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
 from numpy import pi
-import argparse
-import glob
 
 CANNY_LOW = 0   # 100
 CANNY_HIGH = 155  # 255
@@ -57,11 +55,11 @@ def processFrame(frame, tresholding):
     if tresholding:
         # Apply Canny Edge Detection
         # compute the median of the single channel pixel intensities
-        v = np.median(mod_frame)
+        # v = np.median(mod_frame)
         # apply automatic Canny edge detection using the computed median
-        sigma = 0.33
-        lower = int(max(0, (1.0 - sigma) * v))
-        upper = int(min(255, (1.0 + sigma) * v))
+        # sigma = 0.33
+        # lower = int(max(0, (1.0 - sigma) * v))
+        # upper = int(min(255, (1.0 + sigma) * v))
         mod_frame = cv2.Canny(mod_frame, 30, 90, L2gradient=True)
     else:
         mod_frame = cv2.threshold(mod_frame, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
@@ -104,18 +102,18 @@ def getPiecesFromImage(frame):
     for cnt in contours:
         if cnt.shape[0] < 45:
             continue
-        print(cnt.shape)
+        # print(cnt.shape)
         rect = cv2.boundingRect(cnt)
         x, y, w, h = rect
 
-        if 6000 <= w*h <= 12800:  # Greater than the size of an empty square and less than 2 squares
+        if 4000 <= w*h <= 12800:  # Greater than the size of an empty square and less than 2 squares
             # Create cropped image
             mask = perspective_frame[y:y+h, x:x+w]
             mask = cv2.resize(mask, (80, 80), interpolation=cv2.INTER_AREA)  # Create Uniform image size for TF input
             croppedImages.append(mask)
             # Draw bounding box and centroid to image
             cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
-            # Draw center coordinate in bounding box
+            # Draw center coordinate in bounding box (favoring bottom of box)
             centerCoord = (int(x+(w/2)), int(y+(h/1.5)))
             centroids.append(centerCoord)
             cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
