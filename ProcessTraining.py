@@ -39,7 +39,7 @@ def addLines(frame, lines, color):
         x2 = int(x0 - 1000*(-b))
         y2 = int(y0 - 1000*(a))
         coords.append((x1, y1, x2, y2))
-        # cv2.line(frame, (x1, y1), (x2, y2), color, 2)  # COLOR: BGR Format
+        cv2.line(frame, (x1, y1), (x2, y2), color, 2)  # COLOR: BGR Format
     return coords
 
 
@@ -49,18 +49,17 @@ def getBoardPerspective(frame, corners, tcorners):
     return pframe
 
 
-def processFrame(frame, tresholding):
+def processFrame(in_frame, thresholding):
     # Convert to Grayscale
-    cv2.imwrite('./ChessImages/preprocessFrame.jpeg', frame)
-    mod_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    mod_frame = cv2.cvtColor(in_frame, cv2.COLOR_BGR2GRAY)
     # Apply Gaussian Blur to reduce noise
-    mod_frame = cv2.GaussianBlur(mod_frame, (5, 5), 0)  # Alternative: cv2.medianBlur(img,5)
-    if tresholding:
+    mod_frame = cv2.GaussianBlur(mod_frame, (7, 7), 0)  # Alternative: cv2.medianBlur(img,5)
+    # mod_frame = cv2.morphologyEx(mod_frame, cv2.MORPH_OPEN, (11, 11))
+    if thresholding:
         # Apply Canny Edge Detection
         mod_frame = cv2.Canny(mod_frame, 40, 120, L2gradient=True)  # Original: 30, 90
     else:
         mod_frame = cv2.threshold(mod_frame, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    cv2.imwrite('./ChessImages/processFrame.jpeg', mod_frame)
     return mod_frame
 
 
@@ -77,23 +76,13 @@ def dist(var1, var2):
     return math.sqrt(t1 + t2)
 
 
-def getPiecesFromImage(frame):
-    # Apply Grayscale, GBlur, and Canny
-    contour_frame = processFrame(frame, 1)
-    # return contour_frame, 0, 0
-    contours = getContours(contour_frame)
-    maxContour = sorted(contours, key=cv2.contourArea, reverse=True)[0]
-
-    # Get Board Corners
-    perim = cv2.arcLength(maxContour, True)
-    epsilon = 0.02*perim
-    approxCorners = np.asarray(cv2.approxPolyDP(maxContour, epsilon, True)).reshape(-1, 2)
+# GET FOUR FARTHEST CORNERS OF CONTOUR
+def findCornersFromPolyDP(in_frame, approxCorners):
     bottomLeft = [0, 0]
-    bottomRight = [0, frame.shape[1]]
-    topRight = [frame.shape[0], frame.shape[1]]
-    topLeft = [frame.shape[0], 0]
+    bottomRight = [0, in_frame.shape[1]]
+    topRight = [in_frame.shape[0], in_frame.shape[1]]
+    topLeft = [in_frame.shape[0], 0]
 
-    # GET FOUR FARTHEST CORNERS OF CONTOUR
     boardBR, boardBL, boardTR, boardTL = None, None, None, None
     for ac in approxCorners:
         if boardBR is None or dist(boardBR, bottomRight) < dist(ac, bottomRight):
@@ -104,62 +93,93 @@ def getPiecesFromImage(frame):
             boardTR = ac
         if boardTL is None or dist(boardTL, topLeft) < dist(ac, topLeft):
             boardTL = ac
-    cornersTrimmed = np.asarray([boardTR, boardBR, boardBL, boardTL])
+    return np.asarray([boardTR, boardBR, boardBL, boardTL])
+
+
+def getPiecesFromImage(in_frame):
+    cv2.imwrite('./ChessImages/1preprocessFrame.jpeg', in_frame)
+    # Apply Grayscale, GBlur, and Canny
+    contour_frame = processFrame(in_frame, 1)
+    cv2.imwrite('./ChessImages/2processFrame.jpeg', contour_frame)
+    # return contour_frame, 0, 0
+    contours = getContours(contour_frame)
+    maxContour = sorted(contours, key=cv2.contourArea, reverse=True)[0]
+    boardRect = cv2.boundingRect(maxContour)
+    x, y, w, h = boardRect
+    if w < 1600 or h < 1600:
+        print(w, h)
+        raise ValueError("Board not detected")
+
+    # Get Board Corners
+    perim = cv2.arcLength(maxContour, True)
+    epsilon = 0.02 * perim
+    approxCorners = np.asarray(cv2.approxPolyDP(maxContour, epsilon, True)).reshape(-1, 2)
+    cornersTrimmed = findCornersFromPolyDP(in_frame, approxCorners)
+
+    temp_frame = in_frame.copy()
     for ac in cornersTrimmed:
-        cv2.circle(frame, ac, 14, (255, 0, 255), thickness=2)
+        cv2.circle(temp_frame, ac, 14, (255, 0, 255), thickness=2)
     # pts_dst = np.array([[3024, 0.0], [3024, 4032], [0, 4032], [0.0, 0.0]])
     pts_dst = np.array([[0.0, 0.0], [3024, 0.0], [3024, 4032], [0, 4032]])  # FOR NO ROTATION
 
     # Warps Perspective and Resizes to (640, 640)
-    perspective_frame = getBoardPerspective(frame, cornersTrimmed, pts_dst)
-    perspective_frame = cv2.resize(perspective_frame, (640, 640), interpolation=cv2.INTER_AREA)
+    cv2.imwrite('./ChessImages/3printCorners.jpeg', temp_frame)
+    perspective_frame = getBoardPerspective(in_frame, cornersTrimmed, pts_dst)
+    perspective_frame = cv2.resize(perspective_frame,
+                                   (640, 640),
+                                   interpolation=cv2.INTER_AREA)
 
-    contour_frame = processFrame(perspective_frame, 1)  # Uses Binary instead of Canny Edge Detection
-    contours = getContours(contour_frame)
+    perspective_contour_frame = processFrame(perspective_frame, 1)
+    print(perspective_contour_frame.shape)
+    cv2.imwrite('ChessImages/4warpedImage.jpeg', perspective_contour_frame)
+    contours = getContours(perspective_contour_frame)
     # rect = cv2.boundingRect(maxContour)
-    # maxX, maxY, maxW, maxH = rect
     croppedImages = []
     centroids = []
 
+    temp_perspective_frame = perspective_frame.copy()
     for cnt in contours:
-        if cnt.shape[0] < 45:
+        if cnt.shape[0] < 20:
             continue
         rect = cv2.boundingRect(cnt)
         x, y, w, h = rect
 
-        if 4000 <= w*h <= 12800:  # Greater than the size of an empty square and less than 2 squares
+        # Greater than the size of an empty square and less than 2 squares
+        if 2000 <= w*h <= 13000:  # and y+h < 640 and x+w < 640 and y > 0 and x > 0:
             # Create cropped image
             mask = perspective_frame[y:y+h, x:x+w]
             mask = cv2.resize(mask, (80, 80), interpolation=cv2.INTER_AREA)  # Create Uniform image size for TF input
             croppedImages.append(mask)
             # Draw bounding box and centroid to image
-            cv2.rectangle(perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
+            cv2.rectangle(temp_perspective_frame, (x, y), (x+w, y+h), (255, 0, 255), 2)
             # Draw center coordinate in bounding box (favoring bottom of box)
             centerCoord = (int(x+(w/2)), int(y+(h/1.5)))
             centroids.append(centerCoord)
-            cv2.circle(perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
-        # print('Writing image ' + filename)
-    cv2.imwrite('ChessImages/_garbage/board-coords.jpeg', perspective_frame)
+            cv2.circle(temp_perspective_frame, centerCoord, 4, (255, 0, 255), thickness=2)
+    cv2.imwrite('ChessImages/5drawBounding.jpeg', temp_perspective_frame)
 
     hough_frame = processFrame(perspective_frame, 1)
     horizontal = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=0, max_theta=pi/4)
     vertical = cv2.HoughLines(hough_frame, 1, pi / 180, 100, min_theta=pi/4, max_theta=3*pi/4)
     coordsHorizontal = []
-    coordsVerticle = []
+    coordsVertical = []
+
+    temp_perspective_frame = perspective_frame.copy()
     if horizontal is not None and vertical is not None:
         horizontal = trimLines(horizontal)
         horizontal = sorted(list(horizontal), key=lambda vx: vx[0])
-        coordsHorizontal = addLines(perspective_frame, horizontal, (255, 0, 0))
+        coordsHorizontal = addLines(temp_perspective_frame, horizontal, (255, 0, 0))
 
         vertical = trimLines(vertical)
         vertical = sorted(list(vertical), key=lambda vx: vx[0])
-        coordsVerticle = addLines(perspective_frame, vertical, (0, 0, 255))
+        coordsVertical = addLines(temp_perspective_frame, vertical, (0, 0, 255))
+    cv2.imwrite('ChessImages/6houghlines.jpeg', temp_perspective_frame)
 
-    return croppedImages, centroids, [coordsHorizontal, coordsVerticle]
+    return croppedImages, centroids, [coordsHorizontal, coordsVertical]
 
 
-def processAndSaveImage(frame):
-    croppedImages, _, _ = getPiecesFromImage(frame)
+def processAndSaveImage(in_frame):
+    croppedImages, _, _ = getPiecesFromImage(in_frame)
 
     # for i, img in enumerate(croppedImages):
     #     cv2.imwrite(f'./Training/piece{i}.jpeg', img)
