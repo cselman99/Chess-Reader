@@ -54,108 +54,108 @@ def classifyImage():
             return {}
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], FILENAME)
         # Load CNN Model
-        model = mg.loadModel('../Keras')
+        # model = mg.loadModel('../Keras')
         # Parse Image File for Pieces
-        croppedImages, centroids, coords = getPiecesFromImage(cv2.imread(filepath))
+        # croppedImages, centroids, coords = getPiecesFromImage(cv2.imread(filepath))
         # Predict pieces and their locations
-        pieces = makePredictions(model, croppedImages, centroids, coords)
-        # pieces = [
-        #         [
-        #             "r",
-        #             [0, 0]
-        #         ],
-        #         [
-        #             "k",
-        #             [0, 2]
-        #         ],
-        #         [
-        #             "r",
-        #             [0, 7]
-        #         ],
-        #         [
-        #             "wp",
-        #             [1, 0]
-        #         ],
-        #         [
-        #             "n",
-        #             [1, 3]
-        #         ],
-        #         [
-        #             "b",
-        #             [1, 4]
-        #         ],
-        #         [
-        #             "wp",
-        #             [1, 6]
-        #         ],
-        #         [
-        #             "b",
-        #             [2, 2]
-        #         ],
-        #         [
-        #             "wp",
-        #             [2, 7]
-        #         ],
-        #         [
-        #             "wp",
-        #             [3, 1]
-        #         ],
-        #         [
-        #             "n",
-        #             [3, 3]
-        #         ],
-        #         [
-        #             "wp",
-        #             [3, 5]
-        #         ],
-        #         [
-        #             "R",
-        #             [7, 0]
-        #         ],
-        #         [
-        #             "K",
-        #             [7, 6]
-        #         ],
-        #         [
-        #             "P",
-        #             [6, 1]
-        #         ],
-        #         [
-        #             "P",
-        #             [6, 5]
-        #         ],
-        #         [
-        #             "P",
-        #             [6, 6]
-        #         ],
-        #         [
-        #             "P",
-        #             [6, 7]
-        #         ],
-        #         [
-        #             "Q",
-        #             [5, 3]
-        #         ],
-        #         [
-        #             "N",
-        #             [5, 5]
-        #         ],
-        #         [
-        #             "B",
-        #             [5, 6]
-        #         ],
-        #         [
-        #             "P",
-        #             [4, 2]
-        #         ],
-        #         [
-        #             "P",
-        #             [4, 3]
-        #         ],
-        #     ]
+        # pieces = makePredictions(model, croppedImages, centroids, coords)
+        pieces = [
+                [
+                    "r",
+                    [0, 0]
+                ],
+                [
+                    "k",
+                    [0, 2]
+                ],
+                [
+                    "r",
+                    [0, 7]
+                ],
+                [
+                    "wp",
+                    [1, 0]
+                ],
+                [
+                    "n",
+                    [1, 3]
+                ],
+                [
+                    "b",
+                    [1, 4]
+                ],
+                [
+                    "wp",
+                    [1, 6]
+                ],
+                [
+                    "b",
+                    [2, 2]
+                ],
+                [
+                    "wp",
+                    [2, 7]
+                ],
+                [
+                    "wp",
+                    [3, 1]
+                ],
+                [
+                    "n",
+                    [3, 3]
+                ],
+                [
+                    "wp",
+                    [3, 5]
+                ],
+                [
+                    "R",
+                    [7, 0]
+                ],
+                [
+                    "K",
+                    [7, 6]
+                ],
+                [
+                    "P",
+                    [6, 1]
+                ],
+                [
+                    "P",
+                    [6, 5]
+                ],
+                [
+                    "P",
+                    [6, 6]
+                ],
+                [
+                    "P",
+                    [6, 7]
+                ],
+                [
+                    "Q",
+                    [5, 3]
+                ],
+                [
+                    "N",
+                    [5, 5]
+                ],
+                [
+                    "B",
+                    [5, 6]
+                ],
+                [
+                    "P",
+                    [4, 2]
+                ],
+                [
+                    "P",
+                    [4, 3]
+                ],
+            ]
         return {"pieces": pieces}
     return {"pieces": {}}
 
 
 if __name__ == '__main__':
-    app.run(host='192.168.1.224', port=3000, debug=True)
+    app.run(host='192.168.1.225', port=3000, debug=True)
