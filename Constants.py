@@ -1,4 +1,5 @@
 TRAINING_PATH = './Training/'
+ROBOFLOW_PATH = './roboflow_imgs/'
 
 PIECES = ['bb',
           'bk',

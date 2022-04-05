@@ -164,6 +164,7 @@ def processAndSaveImage(frame):
     # for i, img in enumerate(croppedImages):
     #     cv2.imwrite(f'./Training/piece{i}.jpeg', img)
 
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         raise ValueError("Wrong number of arguments")
