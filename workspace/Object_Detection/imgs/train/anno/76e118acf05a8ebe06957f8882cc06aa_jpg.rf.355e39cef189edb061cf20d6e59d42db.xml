@@ -1,0 +1,27 @@
+<annotation>
+	<folder></folder>
+	<filename>76e118acf05a8ebe06957f8882cc06aa_jpg.rf.355e39cef189edb061cf20d6e59d42db.jpg</filename>
+	<path>76e118acf05a8ebe06957f8882cc06aa_jpg.rf.355e39cef189edb061cf20d6e59d42db.jpg</path>
+	<source>
+		<database>roboflow.ai</database>
+	</source>
+	<size>
+		<width>2048</width>
+		<height>1372</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>black-king</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<occluded>0</occluded>
+		<bndbox>
+			<xmin>858</xmin>
+			<xmax>1000</xmax>
+			<ymin>922</ymin>
+			<ymax>1191</ymax>
+		</bndbox>
+	</object>
+</annotation>
