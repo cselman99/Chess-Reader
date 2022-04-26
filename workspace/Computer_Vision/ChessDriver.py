@@ -25,13 +25,18 @@ def checkLocation(point, line):
 
 
 def predictSquare(curCentroid, coords):
-    horizontal, verticle = coords[0], coords[1]
+    horizontal, vertical = coords[0], coords[1]
     vSquare = 0
     hSquare = 0
     while checkLocation(curCentroid, horizontal[hSquare]):
+        if hSquare == 8:
+            break
         hSquare += 1
-    while checkLocation(curCentroid, verticle[vSquare]):
+    while checkLocation(curCentroid, vertical[vSquare]):
+        if vSquare == 8:
+            break
         vSquare += 1
+    print(hSquare, vSquare)
     return hSquare, vSquare
 
 

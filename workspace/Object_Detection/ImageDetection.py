@@ -142,13 +142,9 @@ def _run_odt(image_path, interpreter, threshold=0.5):
 
 
 # Model to be run on Perspective Warped Image
-def detect(fp):
+def detect(fp, interpreter):
     pieces = []
-    # ------------------------------------------------ #
-    # Load the TFLite model
-    interpreter = tf.lite.Interpreter(model_path=model_path)
-    interpreter.allocate_tensors()
-    # ------------------------------------------------ #
+
     original_image_np, results = _run_odt(fp, interpreter, threshold=DETECTION_THRESHOLD)
     # ------------------------------------------------ #
     # Gather Hough-Lines from image
@@ -159,8 +155,8 @@ def detect(fp):
     if len(houghlines[0]) != 8 or len(houghlines[1] != 8):
         print("Wrong number of hough lines detected")
         # return pieces
-    houghlines[0] = houghlines[0][:7]
-    houghlines[1] = houghlines[1][:7]
+    houghlines[0] = houghlines[0][:9]
+    houghlines[1] = houghlines[1][:9]
     # Get Piece Location
     for obj in results:
         # Convert the object bounding box from relative coordinates to absolute
@@ -168,7 +164,7 @@ def detect(fp):
         ymin, xmin, ymax, xmax = obj['bounding_box']
         classID = obj['class_id']
         className = Constants.label_map[int(classID) + 1]
-        print(className)
+
         xmin = int(xmin * original_image_np.shape[1])
         xmax = int(xmax * original_image_np.shape[1])
         ymin = int(ymin * original_image_np.shape[0])
@@ -177,11 +173,13 @@ def detect(fp):
         height = ymax - ymin
 
         centroid = (int(xmin + (width / 2)), int(ymin + (height / 1.5)))
+        print(className, centroid)
         try:
             square = predictSquare(centroid, houghlines)
             pieces.append((className, square))
-        except:
+        except Exception as e:
             print("failed to predict square for " + className)
+            print(e)
 
     return pieces
 
@@ -189,6 +187,11 @@ def detect(fp):
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == '0':
         _run()
+    # ------------------------------------------------ #
+    # Load the TFLite model
+    interpreter = tf.lite.Interpreter(model_path=model_path)
+    interpreter.allocate_tensors()
+    # ------------------------------------------------ #
     fp = f"{test_path}img/fdcd6ada676799da8a870f58fdf548db_jpg.rf.54abced68347da874d25c5d3886d3c4a.jpg"
-    detect(fp)
+    detect(fp, interpreter)
 

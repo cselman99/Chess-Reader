@@ -2,11 +2,16 @@ import cv2
 from flask import Flask, request, jsonify
 import os
 import socket
+import tensorflow as tf
 # import ModelGenerator as mg
 import workspace.Constants as Constants
 # from ChessDriver import getPiecesFromImage, makePredictions
 from workspace.Object_Detection.ImageDetection import detect
 from workspace.Computer_Vision.ProcessTraining import borderCalculator, warpImagePerspective
+
+import chess
+import chess.engine
+import asyncio
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
@@ -20,6 +25,12 @@ FILENAME_WARPED = 'board_warped.jpeg'
 FILENAME_TEMP = 'board_temp.jpg'
 CHESS_BOARD = 64
 BOARD_LEN = 8
+
+# Load the TFLite model
+model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/model.tflite'
+interpreter = tf.lite.Interpreter(model_path=model_path)
+interpreter.allocate_tensors()
+# ------------------------------------------------ #
 
 
 @app.route('/', methods=['GET'])
@@ -71,6 +82,37 @@ def bound():
     return {"status": OPERATION_FAILURE}
 
 
+@app.route('/stockfish', methods=['POST'])
+def stockfish_setup():
+    if request.method == 'POST':
+        print("/stockfish reached!")
+        if request.json['move'] is None:
+            return {"status": OPERATION_FAILURE}
+
+        board = chess.Board(request.json['move'])
+        if request.json['time'] is None:
+            time = 5
+        else:
+            time = float(request.json['time'])
+        print(board)
+        asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
+        result = asyncio.run(stockfish(board, time))
+        piece = board.piece_at(result.move.from_square).symbol()
+        dataPackage = {"status": OPERATION_SUCCESS,
+                "from": chess.square_name(result.move.from_square),
+                "to": chess.square_name(result.move.to_square),
+                "piece": piece}
+        print(dataPackage)
+        return dataPackage
+    return {"status": OPERATION_FAILURE}
+
+
+async def stockfish(board, time):
+    transport, engine = await chess.engine.popen_uci(
+        r"D:\Carter\downloads\stockfish_15_win_x64_avx2\stockfish_15_x64_avx2.exe")
+    result = await engine.play(board, chess.engine.Limit(time=time))
+    return result
+
 # @app.route('/warp', methods=['POST'])
 # def warp():
 #     if request.method == 'POST':
@@ -116,7 +158,7 @@ def classify():
         filepath = app.config['UPLOAD_FOLDER'] + '/' + FILENAME_WARPED
         print('Detecting pieces from ' + filepath)
 
-        pieces = detect(filepath)
+        pieces = detect(filepath, interpreter)
         return {"status": OPERATION_SUCCESS, "pieces": pieces}
     return {"status": OPERATION_FAILURE, "pieces": {}}
 
