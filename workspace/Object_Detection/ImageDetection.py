@@ -3,12 +3,11 @@ import numpy as np
 from tflite_model_maker import model_spec
 from tflite_model_maker import object_detector
 import cv2
-from PIL import Image
 import tensorflow as tf
 from absl import logging
 import workspace.Constants as Constants
 from workspace.Computer_Vision.ChessDriver import predictSquare
-from workspace.Computer_Vision.ProcessTraining import getHoughLines
+from workspace.Computer_Vision.ChessboardDetection import getHoughLines
 
 assert tf.__version__.startswith('2')
 
@@ -19,12 +18,16 @@ PATH_TO_DIR = r'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_De
 train_path = f"{PATH_TO_DIR}/train/"
 test_path = f"{PATH_TO_DIR}/test/"
 
-model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/model.tflite'
+model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/model.tflite'
 DETECTION_THRESHOLD = 0.15
-
+MODEL = 'efficientdet_lite3'
 
 def _run():
-    spec = model_spec.get('efficientdet_lite3')
+    """
+    Load training data from path and train specified model. Exports model when finished.
+    :return: None
+    """
+    spec = model_spec.get(MODEL)
 
     train_data = object_detector.DataLoader.from_pascal_voc(images_dir=train_path + 'img',
                                                             annotations_dir=train_path + 'anno', label_map=Constants.label_map)
@@ -45,11 +48,11 @@ def _preprocess_image(image_path, input_size):
 
 
 def _detect_objects(interpreter, image, threshold):
-    """Returns a list of detection results, each a dictionary of object info."""
+    """
+    Returns a list of detection results, each a dictionary of object info.
+    """
 
     signature_fn = interpreter.get_signature_runner()
-
-    # Feed the input image to the model
     output = signature_fn(images=image)
 
     # Get all outputs from the model
@@ -70,60 +73,12 @@ def _detect_objects(interpreter, image, threshold):
     return results
 
 
-def _run_odt_and_draw_results(image_path, interpreter, threshold=0.5):
-    """Run object detection on the input image and draw the detection results"""
-    # Load the input shape required by the model
-    _, input_height, input_width, _ = interpreter.get_input_details()[0]['shape']
-    colors = np.random.randint(0, 255, size=(13, 3), dtype=np.uint8)
-    # Load the labels into a list
-    classes = ['???'] * 13
-    for label_id, label_name in Constants.label_map.items():
-        classes[label_id - 1] = label_name
-
-    # Load the input image and preprocess it
-    preprocessed_image, original_image = _preprocess_image(
-      image_path,
-      (input_height, input_width)
-    )
-
-    # Run object detection on the input image
-    results = _detect_objects(interpreter, preprocessed_image, threshold=threshold)
-
-    # Plot the detection results on the input image
-    original_image_np = original_image.numpy().astype(np.uint8)
-
-    for obj in results:
-        # Convert the object bounding box from relative coordinates to absolute
-        # coordinates based on the original image resolution
-        ymin, xmin, ymax, xmax = obj['bounding_box']
-        xmin = int(xmin * original_image_np.shape[1])
-        xmax = int(xmax * original_image_np.shape[1])
-        ymin = int(ymin * original_image_np.shape[0])
-        ymax = int(ymax * original_image_np.shape[0])
-
-        # Find the class index of the current object
-        class_id = int(obj['class_id'])
-
-        # Draw the bounding box and label on the image
-        color = [int(c) for c in colors[class_id]]
-        cv2.rectangle(original_image_np, (xmin, ymin), (xmax, ymax), color, 2)
-        # Make adjustments to make the label visible for all objects
-        y = ymin - 15 if ymin - 15 > 15 else ymin + 15
-        label = "{}: {:.0f}%".format(classes[class_id], obj['score'] * 100)
-        cv2.putText(original_image_np, label, (xmin, y),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
-    # Return the final image
-    original_uint8 = original_image_np.astype(np.uint8)
-    return original_uint8
-
-
 def _run_odt(image_path, interpreter, threshold=0.5):
-    """Run object detection on the input image and draw the detection results"""
+    """Run object detection on the input image"""
     # Load the input shape required by the model
     _, input_height, input_width, _ = interpreter.get_input_details()[0]['shape']
     # Load the labels into a list
-    classes = ['???'] * 13
+    classes = [''] * 13
     for label_id, label_name in Constants.label_map.items():
         classes[label_id - 1] = label_name
 
@@ -141,8 +96,8 @@ def _run_odt(image_path, interpreter, threshold=0.5):
     return original_image_np, results
 
 
-# Model to be run on Perspective Warped Image
 def detect(fp, interpreter):
+    """Run the Object-Detection model on Image and Location analysis"""
     pieces = []
 
     original_image_np, results = _run_odt(fp, interpreter, threshold=DETECTION_THRESHOLD)

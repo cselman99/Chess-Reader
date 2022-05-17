@@ -1,12 +1,7 @@
-# NOTE: ChessDriver is for independant training of the Computer Vision CNN Model
-
 import sys
-
-import cv2
 import workspace.Constants as Constants
 import numpy as np
 import workspace.Computer_Vision.ModelGenerator as mg
-from workspace.Computer_Vision.ProcessTraining import getPiecesFromImage
 
 
 # Uses the consistent filename scheme to determine the piece.
@@ -77,10 +72,7 @@ if __name__ == '__main__':
         raise IllegalArgumentError(f"Wrong number of command line arguments. Expected 3 but found {len(sys.argv)}")
 
     # Read in and load image with gray-scale format
-    filename = sys.argv[1]
-    croppedImages, centroids, coords = getPiecesFromImage(cv2.imread(filename))
-    pieces = makePredictions(model, croppedImages, centroids, coords)
-    print(pieces)
-
-
-
+    # filename = sys.argv[1]
+    # croppedImages, centroids, coords = getPiecesFromImage(cv2.imread(filename))
+    # pieces = makePredictions(model, croppedImages, centroids, coords)
+    # print(pieces)

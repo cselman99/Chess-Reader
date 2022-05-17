@@ -3,17 +3,13 @@ from flask import Flask, request, jsonify
 import os
 import socket
 import tensorflow as tf
-# import ModelGenerator as mg
 import workspace.Constants as Constants
-# from ChessDriver import getPiecesFromImage, makePredictions
 from workspace.Object_Detection.ImageDetection import detect
-from workspace.Computer_Vision.ProcessTraining import borderCalculator, warpImagePerspective
+from workspace.Computer_Vision.ChessboardDetection import borderCalculator, warpImagePerspective
 
 import chess
 import chess.engine
 import asyncio
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = Constants.APP_UPLOAD_FOLDER
@@ -27,32 +23,16 @@ CHESS_BOARD = 64
 BOARD_LEN = 8
 
 # Load the TFLite model
-model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/model.tflite'
+model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/model.tflite'
 interpreter = tf.lite.Interpreter(model_path=model_path)
 interpreter.allocate_tensors()
 # ------------------------------------------------ #
-
-
-@app.route('/', methods=['GET'])
-def test():
-    return jsonify({"hello": "world"})
-
-
-def checkExtension(filename):
-    for ext in ALLOWED_EXTENSIONS:
-        if ext in filename:
-            return True
-    return False
 
 
 @app.route('/submitImage', methods=['POST'])
 def upload_file():
     if request.method == 'POST':
         print("/submitImage reached!")
-        # check if the post request has the file part
-        # if 'file' not in request.files:
-        #     return {'status': IMG_UPLOAD_FAILURE, 'message': 'File not found in request'}
-        # file = request.files['file']
 
         bytesOfImage = request.get_data()
         with open('/'.join([Constants.APP_UPLOAD_FOLDER, FILENAME]), 'wb') as out:
@@ -68,7 +48,7 @@ def bound():
         # Confirm image upload has taken place
         if len(os.listdir(app.config['UPLOAD_FOLDER'])) == 0:
             return {}
-        filepath = "/".join([app.config['UPLOAD_FOLDER'], FILENAME_TEMP]) # FILENAME
+        filepath = "/".join([app.config['UPLOAD_FOLDER'], FILENAME])
 
         frame = cv2.imread(filepath)
         borderPoints = borderCalculator(frame)
@@ -112,30 +92,6 @@ async def stockfish(board, time):
         r"D:\Carter\downloads\stockfish_15_win_x64_avx2\stockfish_15_x64_avx2.exe")
     result = await engine.play(board, chess.engine.Limit(time=time))
     return result
-
-# @app.route('/warp', methods=['POST'])
-# def warp():
-#     if request.method == 'POST':
-#         print("/warp reached!")
-#
-#         boardBL = request.json["boardBL"]
-#         boardTL = request.json["boardTL"]
-#         boardTR = request.json["boardTR"]
-#         boardBR = request.json["boardBR"]
-#
-#         if boardTR is None or boardBR is None or boardBL is None or boardTL is None:
-#             return {'status': IMG_UPLOAD_FAILURE, 'message': 'Unable to gather boarder points'}
-#
-#         # Update image
-#         if len(os.listdir(app.config['UPLOAD_FOLDER'])) == 0:
-#             return {'status': IMG_UPLOAD_FAILURE, 'message': 'No image uploaded'}
-#         fp = os.path.join(app.config['UPLOAD_FOLDER'], FILENAME)
-#         frame = imread(fp)
-#
-#
-#
-#         return {'status': IMG_UPLOAD_SUCESS}
-#     return {'status': IMG_UPLOAD_FAILURE, 'message': 'Invalid method: ' + request.method}
 
 
 @app.route('/classify', methods=['GET'])
