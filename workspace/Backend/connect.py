@@ -1,11 +1,12 @@
 import cv2
-from flask import Flask, request, jsonify
+from flask import Flask, request
 import os
 import socket
 import tensorflow as tf
 import workspace.Constants as Constants
 from workspace.Object_Detection.ImageDetection import detect
-from workspace.Computer_Vision.ChessboardDetection import borderCalculator, warpImagePerspective
+# from workspace.Computer_Vision.ChessboardDetection import borderCalculator, warpImagePerspective
+from workspace.Computer_Vision.ChessboardDetection import detectBoard
 
 import chess
 import chess.engine
@@ -23,9 +24,12 @@ CHESS_BOARD = 64
 BOARD_LEN = 8
 
 # Load the TFLite model
-model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/model.tflite'
+model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/det3.tflite'
 interpreter = tf.lite.Interpreter(model_path=model_path)
 interpreter.allocate_tensors()
+
+load = cv2.imread
+save = cv2.imwrite
 # ------------------------------------------------ #
 
 
@@ -50,12 +54,13 @@ def bound():
             return {}
         filepath = "/".join([app.config['UPLOAD_FOLDER'], FILENAME])
 
-        frame = cv2.imread(filepath)
-        borderPoints = borderCalculator(frame)
-        print(borderPoints)
-        # Warp frame and write to upload directory
-        warpFrame = warpImagePerspective(frame, borderPoints)
-        cv2.imwrite("/".join([Constants.APP_UPLOAD_FOLDER, FILENAME_WARPED]), warpFrame)
+        frame = load(filepath)
+        # borderPoints = borderCalculator(frame)
+        # print(borderPoints)
+        # # Warp frame and write to upload directory
+        # warpFrame = warpImagePerspective(frame, borderPoints)
+        warpFrame = detectBoard(frame)
+        save("/".join([Constants.APP_UPLOAD_FOLDER, FILENAME_WARPED]), warpFrame)
 
         return {"status": OPERATION_SUCCESS}
 

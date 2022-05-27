@@ -3,11 +3,12 @@ import numpy as np
 from tflite_model_maker import model_spec
 from tflite_model_maker import object_detector
 import cv2
+import os
 import tensorflow as tf
 from absl import logging
 import workspace.Constants as Constants
 from workspace.Computer_Vision.ChessDriver import predictSquare
-from workspace.Computer_Vision.ChessboardDetection import getHoughLines
+# from workspace.Computer_Vision.ChessboardDetection import getHoughLines
 
 assert tf.__version__.startswith('2')
 
@@ -18,8 +19,11 @@ PATH_TO_DIR = r'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_De
 train_path = f"{PATH_TO_DIR}/train/"
 test_path = f"{PATH_TO_DIR}/test/"
 
-model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/model.tflite'
+model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/det3.tflite'  # Rename to model name in this folder
 DETECTION_THRESHOLD = 0.15
+EPOCHS = 1
+
+# Pick between efficientdet_lite0, efficientdet_lite1, efficientdet_lite2, efficientdet_lite3
 MODEL = 'efficientdet_lite3'
 
 def _run():
@@ -27,12 +31,26 @@ def _run():
     Load training data from path and train specified model. Exports model when finished.
     :return: None
     """
+
+    os.environ["TFHUB_CACHE_DIR"] = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/temp_model_storage'
     spec = model_spec.get(MODEL)
 
+    print(f'Building {MODEL.upper()} with DETECTION THRESHOLD: {DETECTION_THRESHOLD} | EPOCHS: {EPOCHS}')
+
+    test_data = object_detector.DataLoader.from_pascal_voc(images_dir=test_path + 'img',
+                                                          annotations_dir=test_path + 'anno',
+                                                          label_map=Constants.label_map)
+
     train_data = object_detector.DataLoader.from_pascal_voc(images_dir=train_path + 'img',
-                                                            annotations_dir=train_path + 'anno', label_map=Constants.label_map)
-    model = object_detector.create(train_data, model_spec=spec, batch_size=4, train_whole_model=True, epochs=40)
-    model.export(export_dir='..')
+                                                            annotations_dir=train_path + 'anno',
+                                                            label_map=Constants.label_map)
+
+    model = object_detector.create(train_data, model_spec=spec, batch_size=4, train_whole_model=True, epochs=EPOCHS)
+    # metrics = model.evaluate(test_data)
+    metrics = model.evaluate_tflite(model_path, test_data)
+    print(metrics)
+
+    # model.export(export_dir='.')
 
 
 def _preprocess_image(image_path, input_size):
@@ -103,15 +121,15 @@ def detect(fp, interpreter):
     original_image_np, results = _run_odt(fp, interpreter, threshold=DETECTION_THRESHOLD)
     # ------------------------------------------------ #
     # Gather Hough-Lines from image
-    img = cv2.imread(fp)
-    houghlines = getHoughLines(img)
+    # img = cv2.imread(fp)
+    # houghlines = getHoughLines(img)
 
     # Confirm correct number of hough lines
-    if len(houghlines[0]) != 8 or len(houghlines[1] != 8):
-        print("Wrong number of hough lines detected")
-        # return pieces
-    houghlines[0] = houghlines[0][:9]
-    houghlines[1] = houghlines[1][:9]
+    # if len(houghlines[0]) != 8 or len(houghlines[1] != 8):
+    #     print("Wrong number of hough lines detected")
+    #     # return pieces
+    # houghlines[0] = houghlines[0][:9]
+    # houghlines[1] = houghlines[1][:9]
     # Get Piece Location
     for obj in results:
         # Convert the object bounding box from relative coordinates to absolute
@@ -130,7 +148,7 @@ def detect(fp, interpreter):
         centroid = (int(xmin + (width / 2)), int(ymin + (height / 1.5)))
         print(className, centroid)
         try:
-            square = predictSquare(centroid, houghlines)
+            square = predictSquare(centroid)
             pieces.append((className, square))
         except Exception as e:
             print("failed to predict square for " + className)
@@ -144,9 +162,9 @@ if __name__ == "__main__":
         _run()
     # ------------------------------------------------ #
     # Load the TFLite model
-    interpreter = tf.lite.Interpreter(model_path=model_path)
-    interpreter.allocate_tensors()
-    # ------------------------------------------------ #
-    fp = f"{test_path}img/fdcd6ada676799da8a870f58fdf548db_jpg.rf.54abced68347da874d25c5d3886d3c4a.jpg"
-    detect(fp, interpreter)
+    # interpreter = tf.lite.Interpreter(model_path=model_path)
+    # interpreter.allocate_tensors()
+    # # ------------------------------------------------ #
+    # fp = f"{test_path}img/fdcd6ada676799da8a870f58fdf548db_jpg.rf.54abced68347da874d25c5d3886d3c4a.jpg"
+    # detect(fp, interpreter)
 
