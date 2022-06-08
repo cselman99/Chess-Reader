@@ -20,8 +20,9 @@ train_path = f"{PATH_TO_DIR}/train/"
 test_path = f"{PATH_TO_DIR}/test/"
 
 model_path = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/models/det3.tflite'  # Rename to model name in this folder
-DETECTION_THRESHOLD = 0.15
-EPOCHS = 1
+DETECTION_THRESHOLD = 0.5
+EPOCHS = 40
+BATCH_SIZE = 2
 
 # Pick between efficientdet_lite0, efficientdet_lite1, efficientdet_lite2, efficientdet_lite3
 MODEL = 'efficientdet_lite3'
@@ -35,7 +36,7 @@ def _run():
     os.environ["TFHUB_CACHE_DIR"] = 'C:/Users/Carter/Desktop/Classes/Chess-Reader/workspace/Object_Detection/temp_model_storage'
     spec = model_spec.get(MODEL)
 
-    print(f'Building {MODEL.upper()} with DETECTION THRESHOLD: {DETECTION_THRESHOLD} | EPOCHS: {EPOCHS}')
+    print(f'Building {MODEL.upper()} with BATCH SIZE: {BATCH_SIZE} | EPOCHS: {EPOCHS} | DETECTION THRESHOLD: {DETECTION_THRESHOLD}')
 
     test_data = object_detector.DataLoader.from_pascal_voc(images_dir=test_path + 'img',
                                                           annotations_dir=test_path + 'anno',
@@ -45,7 +46,7 @@ def _run():
                                                             annotations_dir=train_path + 'anno',
                                                             label_map=Constants.label_map)
 
-    model = object_detector.create(train_data, model_spec=spec, batch_size=4, train_whole_model=True, epochs=EPOCHS)
+    model = object_detector.create(train_data, model_spec=spec, batch_size=BATCH_SIZE, train_whole_model=True, epochs=EPOCHS)
     # metrics = model.evaluate(test_data)
     metrics = model.evaluate_tflite(model_path, test_data)
     print(metrics)
