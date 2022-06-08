@@ -2,13 +2,11 @@ import sys
 import numpy as np
 from tflite_model_maker import model_spec
 from tflite_model_maker import object_detector
-import cv2
 import os
 import tensorflow as tf
 from absl import logging
 import workspace.Constants as Constants
 from workspace.Computer_Vision.ChessDriver import predictSquare
-# from workspace.Computer_Vision.ChessboardDetection import getHoughLines
 
 assert tf.__version__.startswith('2')
 
@@ -26,6 +24,16 @@ BATCH_SIZE = 2
 
 # Pick between efficientdet_lite0, efficientdet_lite1, efficientdet_lite2, efficientdet_lite3
 MODEL = 'efficientdet_lite3'
+SQUARE_SIZE = 80
+
+
+def predictSquare(point):
+    x, y = point[0], point[1]
+    hSquare = x // SQUARE_SIZE + 1
+    vSquare = y // SQUARE_SIZE + 1
+    print(hSquare, vSquare)
+    return hSquare, vSquare
+
 
 def _run():
     """
@@ -47,11 +55,9 @@ def _run():
                                                             label_map=Constants.label_map)
 
     model = object_detector.create(train_data, model_spec=spec, batch_size=BATCH_SIZE, train_whole_model=True, epochs=EPOCHS)
-    # metrics = model.evaluate(test_data)
     metrics = model.evaluate_tflite(model_path, test_data)
     print(metrics)
-
-    # model.export(export_dir='.')
+    model.export(export_dir='.')
 
 
 def _preprocess_image(image_path, input_size):
@@ -118,19 +124,7 @@ def _run_odt(image_path, interpreter, threshold=0.5):
 def detect(fp, interpreter):
     """Run the Object-Detection model on Image and Location analysis"""
     pieces = []
-
     original_image_np, results = _run_odt(fp, interpreter, threshold=DETECTION_THRESHOLD)
-    # ------------------------------------------------ #
-    # Gather Hough-Lines from image
-    # img = cv2.imread(fp)
-    # houghlines = getHoughLines(img)
-
-    # Confirm correct number of hough lines
-    # if len(houghlines[0]) != 8 or len(houghlines[1] != 8):
-    #     print("Wrong number of hough lines detected")
-    #     # return pieces
-    # houghlines[0] = houghlines[0][:9]
-    # houghlines[1] = houghlines[1][:9]
     # Get Piece Location
     for obj in results:
         # Convert the object bounding box from relative coordinates to absolute
@@ -159,13 +153,13 @@ def detect(fp, interpreter):
 
 
 if __name__ == "__main__":
+    # Check if model should be created
     if len(sys.argv) > 1 and sys.argv[1] == '0':
         _run()
-    # ------------------------------------------------ #
+    # ---- Load model and sample image for testing ---- #
     # Load the TFLite model
     # interpreter = tf.lite.Interpreter(model_path=model_path)
     # interpreter.allocate_tensors()
-    # # ------------------------------------------------ #
     # fp = f"{test_path}img/fdcd6ada676799da8a870f58fdf548db_jpg.rf.54abced68347da874d25c5d3886d3c4a.jpg"
     # detect(fp, interpreter)
 

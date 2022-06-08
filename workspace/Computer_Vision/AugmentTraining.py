@@ -1,9 +1,12 @@
+# --- DEPRECATED FILE --- #
+
 import workspace.Constants as constants
 from os import listdir
 from os.path import isfile, join, isdir
 from workspace.Constants import AUGMENTATION_LIMIT
 from keras.preprocessing.image import ImageDataGenerator, img_to_array
 import cv2
+
 
 def augmentImage(source, destination):
     # Image Augmentation to increase training set size

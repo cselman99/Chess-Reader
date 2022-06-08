@@ -1,10 +1,10 @@
+# --- DEPRECATED FILE ---
+
 import sys
 import workspace.Constants as Constants
 import numpy as np
 import workspace.Computer_Vision.ModelGenerator as mg
 
-
-SQUARE_SIZE = 80
 
 # Uses the consistent filename scheme to determine the piece.
 # Ex: if filename is "rook9128.png" --> return "rook"
@@ -21,26 +21,18 @@ def checkLocation(point, line):
     return ((x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)) > 0
 
 
-# def predictSquare(curCentroid, coords):
-#     horizontal, vertical = coords[0], coords[1]
-#     vSquare = 0
-#     hSquare = 0
-#     while checkLocation(curCentroid, horizontal[hSquare]):
-#         if hSquare == 8:
-#             break
-#         hSquare += 1
-#     while checkLocation(curCentroid, vertical[vSquare]):
-#         if vSquare == 8:
-#             break
-#         vSquare += 1
-#     print(hSquare, vSquare)
-#     return hSquare, vSquare
-
-
-def predictSquare(point):
-    x, y = point[0], point[1]
-    hSquare = x // SQUARE_SIZE + 1
-    vSquare = y // SQUARE_SIZE + 1
+def predictSquare(curCentroid, coords):
+    horizontal, vertical = coords[0], coords[1]
+    vSquare = 0
+    hSquare = 0
+    while checkLocation(curCentroid, horizontal[hSquare]):
+        if hSquare == 8:
+            break
+        hSquare += 1
+    while checkLocation(curCentroid, vertical[vSquare]):
+        if vSquare == 8:
+            break
+        vSquare += 1
     print(hSquare, vSquare)
     return hSquare, vSquare
 
